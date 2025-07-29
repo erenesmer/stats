@@ -12,6 +12,8 @@ import SystemConfiguration
 class SystemMonitor: ObservableObject {
     @Published var cpuUsage: Double = 0.0
     @Published var memoryUsage: Double = 0.0
+    @Published var memoryUsedGB: Double = 0.0
+    @Published var memoryTotalGB: Double = 0.0
     @Published var uploadSpeed: Double = 0.0
     @Published var downloadSpeed: Double = 0.0
     @Published var cpuHistory: [Double] = []
@@ -53,7 +55,10 @@ class SystemMonitor: ObservableObject {
     
     private func updateStats() {
         cpuUsage = getCPUUsage()
-        memoryUsage = getMemoryUsage()
+        let memoryInfo = getMemoryInfo()
+        memoryUsage = memoryInfo.percentage
+        memoryUsedGB = memoryInfo.usedGB
+        memoryTotalGB = memoryInfo.totalGB
         
         let networkSpeeds = getNetworkSpeeds()
         downloadSpeed = networkSpeeds.download
@@ -140,6 +145,36 @@ class SystemMonitor: ObservableObject {
         let usedMemory = (UInt64(info.active_count) + UInt64(info.wire_count)) * UInt64(pageSize)
         
         return Double(usedMemory) / Double(totalMemory) * 100.0
+    }
+    
+    private func getMemoryInfo() -> (percentage: Double, usedGB: Double, totalGB: Double) {
+        var info = vm_statistics64()
+        var count = mach_msg_type_number_t(MemoryLayout.size(ofValue: info) / MemoryLayout<integer_t>.size)
+        
+        let result = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                host_statistics64(mach_host_self(), HOST_VM_INFO64, $0, &count)
+            }
+        }
+        
+        guard result == KERN_SUCCESS else { return (0.0, 0.0, 0.0) }
+        
+        let pageSize = vm_kernel_page_size
+        let totalMemory = ProcessInfo.processInfo.physicalMemory
+        
+        // Calculate memory used the same way Activity Monitor does
+        // Memory Used = App Memory + Wired Memory + Compressed
+        let appMemory = UInt64(info.internal_page_count) * UInt64(pageSize)
+        let wiredMemory = UInt64(info.wire_count) * UInt64(pageSize)
+        let compressedMemory = UInt64(info.compressor_page_count) * UInt64(pageSize)
+        
+        let usedMemory = appMemory + wiredMemory + compressedMemory
+        
+        let percentage = Double(usedMemory) / Double(totalMemory) * 100.0
+        let usedGB = Double(usedMemory) / (1024.0 * 1024.0 * 1024.0)
+        let totalGB = Double(totalMemory) / (1024.0 * 1024.0 * 1024.0)
+        
+        return (percentage, usedGB, totalGB)
     }
     
     private func getNetworkSpeeds() -> (download: Double, upload: Double) {

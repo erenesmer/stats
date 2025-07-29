@@ -24,11 +24,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var monitor = SystemMonitor()
     
     func applicationDidFinishLaunching(_ notification: Notification) {
-        statusItem = NSStatusBar.system.statusItem(withLength: 320)
+        statusItem = NSStatusBar.system.statusItem(withLength: 230)
         
         if let button = statusItem.button {
             let hostingView = NSHostingView(rootView: MenuBarView(monitor: monitor))
-            hostingView.frame = NSRect(x: 0, y: 0, width: 320, height: 22)
+            hostingView.frame = NSRect(x: 0, y: 0, width: 230, height: 22)
             button.addSubview(hostingView)
             button.frame = hostingView.frame
         }
@@ -44,18 +44,15 @@ struct MenuBarView: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            MiniChart(
-                label: "CPU",
+            CPUChart(
                 value: monitor.cpuUsage,
-                history: monitor.cpuHistory,
-                color: .blue
+                history: monitor.cpuHistory
             )
             
-            MiniChart(
-                label: "MEM",
-                value: monitor.memoryUsage,
-                history: monitor.memoryHistory,
-                color: .green
+            MemoryBar(
+                usedGB: monitor.memoryUsedGB,
+                totalGB: monitor.memoryTotalGB,
+                percentage: monitor.memoryUsage
             )
             
             NetworkChart(
@@ -65,25 +62,35 @@ struct MenuBarView: View {
                 downloadHistory: monitor.downloadHistory
             )
         }
-        .frame(width: 320, height: 22)
+        .frame(width: 230, height: 22)
     }
 }
 
-struct MiniChart: View {
-    let label: String
+struct CPUChart: View {
     let value: Double
     let history: [Double]
-    let color: Color
     
     var body: some View {
         HStack(spacing: 4) {
-            Text(label)
-                .font(.system(size: 8, weight: .light))
-                .foregroundColor(.secondary)
+            VStack(spacing: -2) {
+                Text("C")
+                    .font(.system(size: 7, weight: .medium))
+                    .foregroundColor(.white)
+                Text("P")
+                    .font(.system(size: 7, weight: .medium))
+                    .foregroundColor(.white)
+                Text("U")
+                    .font(.system(size: 7, weight: .medium))
+                    .foregroundColor(.white)
+            }
             
             ZStack {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.black.opacity(0.2))
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.black.opacity(0.3))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
+                    )
                     .frame(width: 50, height: 16)
                 
                 GeometryReader { geometry in
@@ -105,28 +112,65 @@ struct MiniChart: View {
                             }
                         }
                     }
-                    .stroke(color, lineWidth: 1.5)
+                    .stroke(Color.blue, lineWidth: 1.5)
                 }
                 .frame(width: 50, height: 16)
+                .mask(RoundedRectangle(cornerRadius: 4))
             }
             
             Text(String(format: "%.0f%%", value))
                 .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .foregroundColor(valueColor(for: value))
-                .frame(width: 25, alignment: .trailing)
+                .foregroundColor(.white)
+                .frame(width: 20)
         }
     }
+}
+
+struct MemoryBar: View {
+    let usedGB: Double
+    let totalGB: Double
+    let percentage: Double
     
-    private func valueColor(for usage: Double) -> Color {
-        switch usage {
-        case 0..<50:
-            return .primary
-        case 50..<80:
-            return .orange
-        default:
-            return .red
+    var body: some View {
+        HStack(spacing: 4) {
+            VStack(spacing: -2) {
+                Text("M")
+                    .font(.system(size: 6, weight: .medium))
+                    .foregroundColor(.white)
+                Text("E")
+                    .font(.system(size: 6, weight: .medium))
+                    .foregroundColor(.white)
+                Text("M")
+                    .font(.system(size: 6, weight: .medium))
+                    .foregroundColor(.white)
+            }
+            
+            ZStack(alignment: .bottom) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.black.opacity(0.3))
+                    .padding(0.5)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 2)
+                            .stroke(Color.orange.opacity(0.3), lineWidth: 1.5)
+                    )
+                    .frame(width: 8, height: 16)
+
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color.orange)
+                    .frame(width: 6, height: 16 * (percentage / 100))
+            }
+            
+            Text(String(format: "%.1fGB", usedGB))
+                .font(.system(size: 9, weight: .medium, design: .monospaced))
+                .foregroundColor(.white)
+                .frame(width: 40, alignment: .leading)
         }
     }
+}
+
+#Preview {
+    MemoryBar(usedGB: 12.4, totalGB: 16.0, percentage: 50)
+    CPUChart(value: 34.3, history: [])
 }
 
 struct NetworkChart: View {
@@ -137,76 +181,91 @@ struct NetworkChart: View {
     
     var body: some View {
         HStack(spacing: 4) {
-            Text("NET")
-                .font(.system(size: 8, weight: .light))
-                .foregroundColor(.secondary)
+//            VStack(spacing: -2) {
+//                Text("N")
+//                    .font(.system(size: 7, weight: .medium))
+//                    .foregroundColor(.white)
+//                Text("E")
+//                    .font(.system(size: 7, weight: .medium))
+//                    .foregroundColor(.white)
+//                Text("T")
+//                    .font(.system(size: 7, weight: .medium))
+//                    .foregroundColor(.white)
+//            }
             
-            ZStack {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.black.opacity(0.2))
-                    .frame(width: 50, height: 16)
+//            ZStack {
+//                RoundedRectangle(cornerRadius: 4)
+//                    .fill(Color.black.opacity(0.3))
+//                    .overlay(
+//                        RoundedRectangle(cornerRadius: 4)
+//                            .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
+//                    )
+//                    .frame(width: 50, height: 16)
                 
-                GeometryReader { geometry in
-                    let maxValue = max(uploadHistory.max() ?? 1, downloadHistory.max() ?? 1, 1)
-                    
-                    Path { path in
-                        guard uploadHistory.count > 1 else { return }
-                        
-                        let width = geometry.size.width
-                        let height = geometry.size.height
-                        let stepX = width / CGFloat(max(uploadHistory.count - 1, 1))
-                        
-                        for (index, value) in uploadHistory.enumerated() {
-                            let x = CGFloat(index) * stepX
-                            let y = height - (CGFloat(value / maxValue) * height)
-                            
-                            if index == 0 {
-                                path.move(to: CGPoint(x: x, y: y))
-                            } else {
-                                path.addLine(to: CGPoint(x: x, y: y))
-                            }
-                        }
-                    }
-                    .stroke(Color.red, lineWidth: 1.5)
-                    
-                    Path { path in
-                        guard downloadHistory.count > 1 else { return }
-                        
-                        let width = geometry.size.width
-                        let height = geometry.size.height
-                        let stepX = width / CGFloat(max(downloadHistory.count - 1, 1))
-                        
-                        for (index, value) in downloadHistory.enumerated() {
-                            let x = CGFloat(index) * stepX
-                            let y = height - (CGFloat(value / maxValue) * height)
-                            
-                            if index == 0 {
-                                path.move(to: CGPoint(x: x, y: y))
-                            } else {
-                                path.addLine(to: CGPoint(x: x, y: y))
-                            }
-                        }
-                    }
-                    .stroke(Color.blue, lineWidth: 1.5)
-                }
-                .frame(width: 50, height: 16)
-            }
+//                GeometryReader { geometry in
+//                    let maxValue = max(uploadHistory.max() ?? 1, downloadHistory.max() ?? 1, 1)
+//                    
+//                    Path { path in
+//                        guard uploadHistory.count > 1 else { return }
+//                        
+//                        let width = geometry.size.width
+//                        let height = geometry.size.height
+//                        let stepX = width / CGFloat(max(uploadHistory.count - 1, 1))
+//                        
+//                        for (index, value) in uploadHistory.enumerated() {
+//                            let x = CGFloat(index) * stepX
+//                            let y = height - (CGFloat(value / maxValue) * height)
+//                            
+//                            if index == 0 {
+//                                path.move(to: CGPoint(x: x, y: y))
+//                            } else {
+//                                path.addLine(to: CGPoint(x: x, y: y))
+//                            }
+//                        }
+//                    }
+//                    .stroke(Color.red, lineWidth: 1.5)
+//                    
+//                    Path { path in
+//                        guard downloadHistory.count > 1 else { return }
+//                        
+//                        let width = geometry.size.width
+//                        let height = geometry.size.height
+//                        let stepX = width / CGFloat(max(downloadHistory.count - 1, 1))
+//                        
+//                        for (index, value) in downloadHistory.enumerated() {
+//                            let x = CGFloat(index) * stepX
+//                            let y = height - (CGFloat(value / maxValue) * height)
+//                            
+//                            if index == 0 {
+//                                path.move(to: CGPoint(x: x, y: y))
+//                            } else {
+//                                path.addLine(to: CGPoint(x: x, y: y))
+//                            }
+//                        }
+//                    }
+//                    .stroke(Color.blue, lineWidth: 1.5)
+//                }
+//                .frame(width: 50, height: 16)
+//                .mask(RoundedRectangle(cornerRadius: 4))
+//            }
             
             VStack(alignment: .trailing, spacing: 0) {
                 HStack(spacing: 2) {
+                    Text(formatBytes(uploadSpeed))
+                        .font(.system(size: 8, weight: .medium, design: .monospaced))
+                        .foregroundColor(.white)
                     Image(systemName: "arrow.up")
                         .font(.system(size: 7))
                         .foregroundColor(.red)
-                    Text(formatBytes(uploadSpeed))
-                        .font(.system(size: 8, weight: .medium, design: .monospaced))
                 }
                 
                 HStack(spacing: 2) {
+                    Text(formatBytes(downloadSpeed))
+                        .font(.system(size: 8, weight: .medium, design: .monospaced))
+                        .foregroundColor(.white)
                     Image(systemName: "arrow.down")
                         .font(.system(size: 7))
                         .foregroundColor(.blue)
-                    Text(formatBytes(downloadSpeed))
-                        .font(.system(size: 8, weight: .medium, design: .monospaced))
                 }
             }
             .frame(width: 55)
